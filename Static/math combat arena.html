@@ -1,0 +1,655 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Math Combat Arena Zambia</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <script src="https://cdn.jsdelivr.net/npm/p5@1.9.0/lib/p5.min.js"></script>
+  <style>
+    body { background: #181e2e; color: #fff; font-family: 'Segoe UI', sans-serif; margin: 0; padding: 0; }
+    #game-container { max-width: 650px; margin: 30px auto; background: #222846; border-radius: 14px; box-shadow: 0 8px 32px rgba(0,0,0,0.35); padding: 24px 16px 8px 16px; }
+    header h1 { text-align: center; margin-bottom: 14px; }
+    #arena { background: #253056; border-radius: 10px; padding: 18px; margin-bottom: 18px; }
+    #players { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 12px; }
+    .player { text-align: center; }
+    .health-bar { background: #444d6a; border-radius: 5px; margin-top: 3px; height: 13px; width: 80px; position: relative; }
+    .health-bar span { display: block; height: 100%; background: linear-gradient(90deg,#76ff94,#ff6e6e); border-radius: 5px; transition: width 0.4s; }
+    #vs { font-size: 1.5em; font-weight: bold; margin: 0 12px; }
+    #challenge-box { background: #1a1f37; border-radius: 8px; padding: 16px; margin-bottom: 12px; text-align: center; }
+    #math-question { font-size: 1.1em; margin-bottom: 10px; min-height: 1.5em;}
+    #mcq-choices { margin-bottom: 10px;}
+    .mcq-btn {
+      display:inline-block; min-width:120px; margin:0.4em 0.7em; padding:0.8em 2.2em; border-radius:10px;
+      border:2px solid #90e0ef; background:#caf0f8; color:#222; font-weight:bold; font-size:1.08em;
+      cursor:pointer; transition:0.15s; outline:none;
+    }
+    .mcq-btn.selected { background:#7f8ff4; color:#fff; border-color:#48cae4; }
+    .mcq-btn.correct { background:#16a34a; color:#fff; border-color:#0f5132; }
+    .mcq-btn.incorrect { background:#e63946; color:#fff; border-color:#a71d2a; }
+    #timer-bar-wrap { height: 13px; margin: 7px 0 10px 0; background: #444d6a; border-radius: 6px; width:80%; margin-left:auto; margin-right:auto;}
+    #timer-bar { height: 13px; background: #16a34a; border-radius: 6px; width: 100%; transition: width 0.23s, background 0.3s;}
+    #arena-instructions { color:#b7e6fa; font-size:1.03em; margin-bottom:7px; }
+    #question-progress { font-size:1.01em; color:#ffdd57; margin-bottom:5px; }
+    #battle-log { height: 58px; overflow-y: auto; background: #151934; border-radius: 7px; padding: 5px 10px; font-size: 0.97em; margin-bottom: 8px; }
+    #power-ups { margin-bottom: 9px; }
+    #power-ups span, #combo-bonus, #speed-bonus, #lightning-round-bonus {
+      background: #2ecb8b; color: #fff; border-radius: 5px; padding: 2px 8px; margin-right: 6px; font-size: 0.95em; display: inline-block;
+    }
+    #combo-bonus { background: #ff6e6e; }
+    #speed-bonus { background: #ffdd57; color: #222; }
+    #lightning-round-bonus { background: #7f8ff4; color: #fff; }
+    #ai-speed-bonus { background: #ffd166; color: #222; }
+    #show-stats { background: #7f8ff4; color: #fff; border: none; border-radius: 7px; padding: 7px 18px; font-size: 1em; cursor: pointer; margin-bottom: 12px; }
+    .modal { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(8,12,30,0.8); display: flex; justify-content: center; align-items: center; z-index: 99; }
+    .modal.hidden { display: none; }
+    .modal-content { background: #223; padding: 18px 20px 16px 20px; border-radius: 10px; min-width: 300px; position: relative; text-align: center; color: #fff; max-width: 96vw; overflow-x: auto; }
+    #close-stats { position: absolute; top: 7px; right: 11px; font-size: 1.4em; cursor: pointer; color: #fff; }
+    #level-select { text-align: center; margin-bottom: 18px; }
+    .level-btn { margin: 0.6em 0.5em; padding: 1.06em 2.1em; font-size: 1.12em; border-radius: 11px; border: none; background: #b7e6fa; color: #263238; cursor: pointer; font-weight: bold; box-shadow: 0 2px 9px #90e0ef33; transition: background 0.15s; }
+    .level-btn:hover, .level-btn.selected { background: #48cae4; color: #fff; }
+    .summary-table { margin: 1.3em auto; background: #1a1f37; border-radius: 7px; color:#fff; font-size:1em; width:95%; border-collapse:collapse;}
+    .summary-table th, .summary-table td { padding: 0.4em 0.5em; border:1px solid #333c5c;}
+    .summary-table th { background:#253056; color:#ffdd57;}
+    .arena-btn { background:#7f8ff4; color:#fff; border:none; border-radius:10px; font-size:1em; font-weight:bold; padding:10px 28px; cursor:pointer; margin-top:15px; }
+    .arena-btn:hover { background:#48cae4;}
+    @media (max-width: 600px) {
+      #game-container { padding: 0.6em 0.3em; }
+      .level-btn { font-size:1em; padding: 0.8em 1em;}
+      .arena-btn { font-size:1em; padding:8px 10px;}
+      .mcq-btn { font-size:1em; min-width:90px; padding:0.8em 0.9em;}
+    }
+    footer { text-align: center; font-size: 0.97em; margin-top: 10px; opacity: 0.7; }
+  </style>
+</head>
+<body>
+  <div id="game-container">
+    <header>
+      <h1>Math Combat Arena 🇿🇲</h1>
+    </header>
+    <div id="level-select">
+      <div style="font-size:1.13em; margin-bottom:1em;">Choose your level:</div>
+      <button class="level-btn" data-level="tutorial">Tutorial 🐣</button>
+      <button class="level-btn" data-level="foundations">Foundations 🟢</button>
+      <button class="level-btn" data-level="intermediate">Intermediate 🟡</button>
+      <button class="level-btn" data-level="junior">Junior Warrior 🧮</button>
+      <button class="level-btn" data-level="apprentice">Apprentice ⚔️</button>
+      <button class="level-btn" data-level="journeyman">Journeyman 🧠</button>
+      <button class="level-btn" data-level="master">Master 🧙</button>
+      <button class="level-btn" data-level="elite">Elite 💎</button>
+    </div>
+    <main>
+      <section id="arena" style="display:none;">
+        <div id="players">
+          <div id="player1" class="player">
+            <canvas id="p1-avatar" width="60" height="60"></canvas>
+            <div class="health-bar"><span id="p1-health"></span></div>
+          </div>
+          <span id="vs">VS</span>
+          <div id="player2" class="player">
+            <canvas id="p2-avatar" width="60" height="60"></canvas>
+            <div class="health-bar"><span id="p2-health"></span></div>
+          </div>
+        </div>
+        <div id="challenge-box">
+          <div id="arena-instructions">Pick the correct answer before time runs out!</div>
+          <div id="question-progress"></div>
+          <div id="math-question">Get Ready...</div>
+          <div id="mcq-choices"></div>
+          <form id="answer-form" autocomplete="off" style="display:none">
+            <input type="number" id="answer-input" autocomplete="off" placeholder="Your Answer" required>
+            <button type="submit">Submit</button>
+          </form>
+          <div id="timer-bar-wrap"><div id="timer-bar"></div></div>
+        </div>
+        <div id="battle-log"></div>
+        <div id="power-ups"></div>
+        <div id="combo-bonus"></div>
+        <div id="speed-bonus"></div>
+        <div id="lightning-round-bonus"></div>
+      </section>
+      <button id="show-stats" style="display:none;">Show Progress 📈</button>
+      <div id="stats-modal" class="modal hidden">
+        <div class="modal-content">
+          <span id="close-stats">&times;</span>
+          <canvas id="stats-chart" width="310" height="180"></canvas>
+        </div>
+      </div>
+    </main>
+    <footer>
+      <p>&copy; 2025 Math Combat Arena | Powered by p5.js</p>
+    </footer>
+  </div>
+  <script>
+    // Timer per level (seconds)
+    const levelTimers = {
+      tutorial: 8,
+      foundations: 10,
+      intermediate: 12,
+      junior: 15,
+      apprentice: 18,
+      journeyman: 20,
+      master: 25,
+      elite: 30
+    };
+
+    // Expanded MCQ banks (20 each category)
+    const questions = {
+      tutorial: [
+        { q: "What is 1 + 2?", options: ["4", "3", "2", "1"], a: 1 },
+        { q: "How many sides does a triangle have?", options: ["2", "3", "4", "5"], a: 1 },
+        { q: "Which shape is round?", options: ["Triangle", "Rectangle", "Circle", "Square"], a: 2 },
+        { q: "How many days in a week?", options: ["5", "6", "7", "8"], a: 2 },
+        { q: "What is 2 + 2?", options: ["3", "4", "5", "6"], a: 1 },
+        { q: "Which is the smallest number?", options: ["3", "1", "5", "2"], a: 1 },
+        { q: "What comes after number 7?", options: ["6", "7", "8", "9"], a: 2 },
+        { q: "How many legs does a spider have?", options: ["6", "8", "4", "2"], a: 1 },
+        { q: "What is 5 - 3?", options: ["1", "2", "3", "4"], a: 1 },
+        { q: "Which number is even?", options: ["5", "3", "2", "7"], a: 2 },
+        { q: "How many months in a year?", options: ["10", "11", "12", "13"], a: 2 },
+        { q: "What is 3 + 4?", options: ["7", "8", "6", "5"], a: 0 },
+        { q: "Which is a fruit?", options: ["Apple", "Potato", "Carrot", "Tomato"], a: 0 },
+        { q: "How many fingers on one hand?", options: ["3", "4", "5", "6"], a: 2 },
+        { q: "What is 10 - 6?", options: ["2", "4", "5", "6"], a: 1 },
+        { q: "Which is the largest?", options: ["Ant", "Dog", "Elephant", "Cat"], a: 2 },
+        { q: "What is 7 + 2?", options: ["8", "9", "10", "11"], a: 1 },
+        { q: "Which is not a color?", options: ["Red", "Blue", "Cat", "Green"], a: 2 },
+        { q: "How many hours in a day?", options: ["12", "18", "24", "30"], a: 2 },
+        { q: "What is 6 - 2?", options: ["2", "3", "4", "5"], a: 2 }
+      ],
+      foundations: [
+        { q: "What is 6 + 7?", options: ["12", "13", "14", "11"], a: 1 },
+        { q: "What is 9 - 4?", options: ["4", "5", "6", "7"], a: 1 },
+        { q: "What is 5 × 2?", options: ["7", "10", "8", "12"], a: 1 },
+        { q: "What is 12 ÷ 3?", options: ["2", "3", "4", "5"], a: 2 },
+        { q: "What is 8 + 5?", options: ["12", "13", "14", "15"], a: 1 },
+        { q: "What is 20 - 6?", options: ["14", "15", "16", "13"], a: 0 },
+        { q: "What is 9 × 3?", options: ["27", "18", "21", "24"], a: 0 },
+        { q: "What is 16 ÷ 4?", options: ["2", "3", "4", "5"], a: 2 },
+        { q: "What is 7 + 8?", options: ["14", "15", "16", "17"], a: 1 },
+        { q: "What is 18 - 9?", options: ["7", "8", "9", "10"], a: 2 },
+        { q: "What is 3 × 6?", options: ["12", "15", "18", "20"], a: 2 },
+        { q: "What is 24 ÷ 6?", options: ["2", "3", "4", "5"], a: 2 },
+        { q: "What is 4 + 7?", options: ["10", "11", "12", "13"], a: 1 },
+        { q: "What is 15 - 5?", options: ["8", "9", "10", "11"], a: 2 },
+        { q: "What is 2 × 8?", options: ["14", "16", "18", "20"], a: 1 },
+        { q: "What is 30 ÷ 5?", options: ["5", "6", "7", "8"], a: 1 },
+        { q: "What is 13 + 4?", options: ["16", "17", "18", "19"], a: 0 },
+        { q: "What is 22 - 12?", options: ["8", "9", "10", "11"], a: 2 },
+        { q: "What is 7 × 3?", options: ["18", "21", "24", "27"], a: 1 },
+        { q: "What is 25 ÷ 5?", options: ["3", "4", "5", "6"], a: 2 }
+      ],
+      intermediate: [
+        { q: "What is 2.5 + 1.5?", options: ["3.5", "4.0", "4.5", "5.0"], a: 1 },
+        { q: "What is 12 × 3?", options: ["36", "33", "39", "42"], a: 0 },
+        { q: "What is 18 ÷ 2?", options: ["7", "8", "9", "10"], a: 2 },
+        { q: "What is the next prime after 7?", options: ["9", "10", "11", "13"], a: 2 },
+        { q: "What is 15% of 200?", options: ["20", "25", "30", "35"], a: 2 },
+        { q: "What is the square root of 64?", options: ["6", "7", "8", "9"], a: 2 },
+        { q: "Convert 0.75 to a fraction.", options: ["1/2", "2/3", "3/4", "4/5"], a: 2 },
+        { q: "What is 13 × 4?", options: ["44", "48", "52", "56"], a: 2 },
+        { q: "If x + 5 = 12, x = ?", options: ["5", "6", "7", "8"], a: 2 },
+        { q: "What is 100 ÷ 25?", options: ["2", "3", "4", "5"], a: 2 },
+        { q: "What is 11 × 12?", options: ["120", "121", "132", "144"], a: 2 },
+        { q: "What is 40% of 50?", options: ["15", "20", "25", "30"], a: 1 },
+        { q: "What is 6²?", options: ["26", "32", "36", "42"], a: 2 },
+        { q: "What is 144 ÷ 12?", options: ["10", "11", "12", "13"], a: 2 },
+        { q: "What is 0.2 × 0.5?", options: ["0.01", "0.05", "0.1", "0.2"], a: 2 },
+        { q: "What is 7³?", options: ["343", "49", "147", "512"], a: 0 },
+        { q: "What is the median of [2,5,9]?", options: ["2", "5", "7", "9"], a: 1 },
+        { q: "What is 81 ÷ 9?", options: ["8", "9", "10", "11"], a: 1 },
+        { q: "What is 18/6 + 5?", options: ["6", "7", "8", "9"], a: 1 },
+        { q: "What is the value of 3x for x=4?", options: ["7", "9", "12", "14"], a: 2 }
+      ],
+      junior: [
+        { q: "Simplify: 3x + 2x", options: ["5x", "6x", "3x²", "2x"], a: 0 },
+        { q: "What is the area of a 4×5 rectangle?", options: ["9", "10", "18", "20"], a: 3 },
+        { q: "6y = 24, y = ?", options: ["3", "4", "5", "6"], a: 1 },
+        { q: "The perimeter of a square of length 7cm?", options: ["14", "21", "28", "49"], a: 2 },
+        { q: "The value of 2a when a=8?", options: ["8", "12", "16", "18"], a: 2 },
+        { q: "What is 4(3+2)?", options: ["14", "16", "18", "20"], a: 1 },
+        { q: "If 5y = 35, y = ?", options: ["5", "6", "7", "8"], a: 2 },
+        { q: "Solve: x/6 = 4", options: ["20", "22", "24", "26"], a: 2 },
+        { q: "What is the value of 12z if z=3?", options: ["24", "30", "36", "48"], a: 2 },
+        { q: "What is 8²?", options: ["56", "60", "64", "72"], a: 2 },
+        { q: "What is 2x + 3x when x=2?", options: ["8", "10", "12", "14"], a: 1 },
+        { q: "What is 7 × 9?", options: ["54", "56", "63", "72"], a: 2 },
+        { q: "What is the LCM of 3 and 4?", options: ["6", "8", "9", "12"], a: 3 },
+        { q: "What is the HCF of 18 and 24?", options: ["2", "3", "6", "12"], a: 2 },
+        { q: "If 4a = 32, a = ?", options: ["6", "7", "8", "9"], a: 2 },
+        { q: "What is 3/4 of 40?", options: ["20", "25", "30", "35"], a: 2 },
+        { q: "What is the sum of the angles in a triangle?", options: ["90°", "120°", "180°", "360°"], a: 2 },
+        { q: "What is 15% of 80?", options: ["10", "12", "14", "16"], a: 3 },
+        { q: "How many faces does a cube have?", options: ["4", "6", "8", "12"], a: 1 },
+        { q: "What is 3² + 4²?", options: ["12", "16", "25", "32"], a: 2 }
+      ],
+      apprentice: [
+        { q: "What is 2² × 3³?", options: ["36", "72", "54", "18"], a: 0 },
+        { q: "Solve: 4x - 3 = 13", options: ["2", "3", "4", "5"], a: 3 },
+        { q: "What is 30% of 90?", options: ["20", "25", "27", "30"], a: 2 },
+        { q: "What is the cube root of 64?", options: ["2", "3", "4", "8"], a: 2 },
+        { q: "What is 3(2x + 4) for x=2?", options: ["18", "20", "22", "24"], a: 0 },
+        { q: "The mean of 3,7,8,12?", options: ["5", "7.5", "8", "10"], a: 1 },
+        { q: "If y = 2x and x=5, y=?", options: ["7", "8", "9", "10"], a: 3 },
+        { q: "What is 4⁴?", options: ["64", "128", "256", "512"], a: 2 },
+        { q: "What is 7 × 8?", options: ["48", "54", "56", "64"], a: 2 },
+        { q: "What is 10% of 250?", options: ["20", "25", "30", "35"], a: 1 },
+        { q: "What is the mode of [2,4,4,5,7]?", options: ["2", "4", "5", "7"], a: 1 },
+        { q: "Simplify: 5(x + 2)", options: ["5x + 2", "5x + 10", "x + 10", "10x + 2"], a: 1 },
+        { q: "What is 8.6 × 10?", options: ["86", "8.6", "860", "0.86"], a: 0 },
+        { q: "Solve: 3x = 27", options: ["6", "7", "8", "9"], a: 3 },
+        { q: "What is the reciprocal of 5?", options: ["1", "1/2", "1/5", "5"], a: 2 },
+        { q: "If 2y - 4 = 10, y=?", options: ["5", "6", "7", "8"], a: 1 },
+        { q: "What is 25% of 44?", options: ["10", "11", "12", "13"], a: 1 },
+        { q: "Factor: x² + 2x", options: ["x(x+2)", "(x+1)²", "x(x-2)", "x²+2x"], a: 0 },
+        { q: "What is 9²?", options: ["81", "72", "64", "91"], a: 0 },
+        { q: "What is 2³ × 5?", options: ["10", "15", "20", "40"], a: 2 }
+      ],
+      journeyman: [
+        { q: "Solve: x² - 9 = 0", options: ["3", "-3", "3 or -3", "0"], a: 2 },
+        { q: "What is the value of π (to 2dp)?", options: ["3.12", "3.14", "3.16", "3.18"], a: 1 },
+        { q: "What is the square root of 225?", options: ["13", "14", "15", "16"], a: 2 },
+        { q: "What is the area of a circle with r=7?", options: ["154", "49", "44", "77"], a: 0 },
+        { q: "Solve: 2x + 3 = 11", options: ["3", "4", "5", "6"], a: 1 },
+        { q: "What is 3/5 of 80?", options: ["24", "36", "48", "60"], a: 2 },
+        { q: "The median of [2,4,6,8,10]", options: ["4", "6", "8", "10"], a: 1 },
+        { q: "Express 0.375 as a fraction.", options: ["1/4", "3/8", "2/5", "5/8"], a: 1 },
+        { q: "What is 2³ + 3²?", options: ["12", "13", "14", "15"], a: 1 },
+        { q: "If x-4 = 13, x=?", options: ["15", "16", "17", "18"], a: 2 },
+        { q: "What is the HCF of 60 and 75?", options: ["5", "10", "15", "20"], a: 2 },
+        { q: "What is the LCM of 8 and 12?", options: ["12", "16", "24", "32"], a: 2 },
+        { q: "What is 7% of 300?", options: ["21", "22", "23", "24"], a: 0 },
+        { q: "If y = 4x + 1, y when x=3?", options: ["11", "12", "13", "14"], a: 0 },
+        { q: "Which is a multiple of 9?", options: ["14", "18", "22", "25"], a: 1 },
+        { q: "What is 0.8 × 0.5?", options: ["0.2", "0.3", "0.4", "0.5"], a: 2 },
+        { q: "What is the value of 6!", options: ["120", "720", "36", "64"], a: 1 },
+        { q: "What is 112 ÷ 8?", options: ["12", "13", "14", "15"], a: 2 },
+        { q: "Solve: x/5 = 3", options: ["10", "15", "20", "25"], a: 1 },
+        { q: "What is the next square after 36?", options: ["42", "44", "48", "49"], a: 3 }
+      ],
+      master: [
+        { q: "Derivative of x³?", options: ["3x²", "x²", "3x", "x³"], a: 0 },
+        { q: "Integral of 2x dx?", options: ["x²", "2x²", "x² + C", "2x² + C"], a: 2 },
+        { q: "Limit of 1/x as x→∞?", options: ["0", "1", "∞", "-∞"], a: 0 },
+        { q: "What is sin(90°)?", options: ["0", "0.5", "1", "2"], a: 2 },
+        { q: "What is log₁₀(100)?", options: ["1", "2", "10", "100"], a: 1 },
+        { q: "What is the discriminant of x²-4x+3=0?", options: ["-1", "0", "1", "4"], a: 2 },
+        { q: "What is the value of e (to 2dp)?", options: ["2.71", "2.73", "3.14", "3.16"], a: 0 },
+        { q: "What is cos(0°)?", options: ["0", "1", "-1", "2"], a: 1 },
+        { q: "What is 7² + 24²?", options: ["625", "650", "625", "625"], a: 0 },
+        { q: "What is the sum of angles in a pentagon?", options: ["360°", "540°", "720°", "900°"], a: 1 },
+        { q: "What is the solution to x²=49?", options: ["±7", "7", "-7", "0"], a: 0 },
+        { q: "What is tan(45°)?", options: ["0", "1", "√2", "√3"], a: 1 },
+        { q: "What is 2! + 3! + 4! ?", options: ["32", "34", "36", "38"], a: 1 },
+        { q: "What is the modulus of -8?", options: ["-8", "0", "8", "16"], a: 2 },
+        { q: "What is the 6th Fibonacci number?", options: ["5", "8", "13", "21"], a: 1 },
+        { q: "What is log₂(32)?", options: ["4", "5", "6", "8"], a: 1 },
+        { q: "What is 2^5 × 2^3?", options: ["2^7", "2^8", "2^15", "2^16"], a: 0 },
+        { q: "What is the sum of the first 10 natural numbers?", options: ["45", "50", "55", "60"], a: 2 },
+        { q: "What is √225?", options: ["13", "14", "15", "16"], a: 2 },
+        { q: "Which is not a prime: 17, 19, 21, 23?", options: ["17", "19", "21", "23"], a: 2 }
+      ],
+      elite: [
+        { q: "If n(A∪B) = n(A) + n(B) - n(A∩B), n(A)=12, n(B)=20, n(A∩B)=7. n(A∪B)?", options: ["25", "32", "19", "27"], a: 0 },
+        { q: "What is the 10th prime number?", options: ["29", "31", "27", "23"], a: 1 },
+        { q: "What is the value of cos(60°)?", options: ["0.5", "0.75", "1", "0"], a: 0 },
+        { q: "Derivative of sin(x)?", options: ["cos(x)", "-cos(x)", "sin(x)", "-sin(x)"], a: 0 },
+        { q: "Integral of 1/x dx?", options: ["ln|x|+C", "1/x+C", "x+C", "e^x+C"], a: 0 },
+        { q: "Sum of interior angles of a hexagon?", options: ["540°", "720°", "900°", "1080°"], a: 1 },
+        { q: "If log₁₀(x) = 2, x = ?", options: ["10", "20", "100", "1000"], a: 2 },
+        { q: "What is the remainder when 55 is divided by 6?", options: ["0", "1", "2", "3"], a: 2 },
+        { q: "If a² = 25, a = ?", options: ["±5", "5", "-5", "0"], a: 0 },
+        { q: "What is 0.001 × 1000?", options: ["0.1", "1", "10", "100"], a: 1 },
+        { q: "What is the value of 7!", options: ["5040", "720", "40320", "504"], a: 0 },
+        { q: "What is the sum 2+4+6+...+20?", options: ["110", "120", "130", "140"], a: 0 },
+        { q: "If x : y = 3:4 and x=12, y=?", options: ["12", "15", "16", "18"], a: 2 },
+        { q: "The cube of 6 is?", options: ["36", "72", "216", "144"], a: 2 },
+        { q: "If f(x) = 2x+3, f(5) = ?", options: ["10", "11", "12", "13"], a: 3 },
+        { q: "What is the sum of the angles in a decagon?", options: ["1440°", "1620°", "1800°", "1980°"], a: 0 },
+        { q: "What is the next number in the sequence: 2, 4, 8, 16, ...?", options: ["18", "20", "24", "32"], a: 3 },
+        { q: "What is the mean of 10, 20, 30, 40, 50?", options: ["25", "30", "35", "40"], a: 1 },
+        { q: "What is the probability of getting 6 on a fair die?", options: ["1/2", "1/3", "1/5", "1/6"], a: 3 },
+        { q: "What is 3! × 2!", options: ["6", "12", "36", "720"], a: 1 }
+      ]
+    };
+
+    let gameState = {
+      level: null, score: 0, aiScore: 0, current: 0, order: [],
+      aiAnswers: [], timeLeft: 45, playerHealth: 100, aiHealth: 100, streak: 0, powerUps: [],
+      answers: [],
+      playerStreak: 0, aiStreak: 0,
+      maxPlayerStreak: 0, maxAiStreak: 0,
+      fastestAnswer: null, slowestAnswer: 0,
+      combos: 0, speedBonuses: 0, lightningRounds: 0, powFreeze: 0, powDouble: 0,
+      analytics: []
+    };
+
+    // DOM
+    const p1Health = document.getElementById("p1-health");
+    const p2Health = document.getElementById("p2-health");
+    const mathQ = document.getElementById("math-question");
+    const mcqChoices = document.getElementById("mcq-choices");
+    const questionProgress = document.getElementById("question-progress");
+    const timerBar = document.getElementById("timer-bar");
+    const powerUpsDiv = document.getElementById("power-ups");
+    const comboBonusDiv = document.getElementById("combo-bonus");
+    const speedBonusDiv = document.getElementById("speed-bonus");
+    const lightningBonusDiv = document.getElementById("lightning-round-bonus");
+    const levelSelect = document.getElementById("level-select");
+    const arenaSection = document.getElementById("arena");
+    const showStatsBtn = document.getElementById("show-stats");
+
+    document.querySelectorAll('.level-btn').forEach(btn => {
+      btn.onclick = function() { startArena(btn.getAttribute('data-level')); };
+    });
+
+    function startArena(level) {
+      if (!questions[level]) { alert("No questions for this level yet!"); return; }
+      Object.assign(gameState, {
+        level, score: 0, aiScore: 0, current: 0, aiAnswers: [],
+        playerHealth: 100, aiHealth: 100, streak: 0, powerUps: [],
+        answers: [], playerStreak: 0, aiStreak: 0, maxPlayerStreak: 0, maxAiStreak: 0,
+        combos: 0, speedBonuses: 0, lightningRounds: 0, powFreeze: 0, powDouble: 0,
+        analytics: []
+      });
+      gameState.order = questions[level].map((_,i)=>i).sort(()=>Math.random()-0.5);
+      updateHealthBars();
+      showPowerUps();
+      comboBonusDiv.textContent = "";
+      speedBonusDiv.textContent = "";
+      lightningBonusDiv.textContent = "";
+      levelSelect.style.display = "none";
+      arenaSection.style.display = "";
+      showStatsBtn.style.display = "";
+      showArenaQuestion();
+    }
+
+    let timerInterval = null;
+    let answerLock = false;
+    let isLightningRound = false;
+    let questionStartTime = 0;
+    function showArenaQuestion() {
+      answerLock = false;
+      comboBonusDiv.textContent = "";
+      speedBonusDiv.textContent = "";
+      lightningBonusDiv.textContent = "";
+      isLightningRound = Math.random() < 0.15; // 15% chance for Lightning Round
+      const qset = questions[gameState.level];
+      if (gameState.current >= qset.length) {
+        clearInterval(timerInterval);
+        showArenaSummary();
+        return;
+      }
+      gameState.timeLeft = levelTimers[gameState.level] || 30;
+      let qIndex = gameState.order[gameState.current];
+      let q = qset[qIndex];
+      mathQ.innerHTML = (isLightningRound ? '<span id="lightning-round-bonus">⚡ Lightning Round: Double Points! ⚡</span><br>' : '') + q.q;
+      if (isLightningRound) gameState.lightningRounds++;
+      mcqChoices.innerHTML = "";
+      q.options.forEach((opt, i) => {
+        let btn = document.createElement("button");
+        btn.className = "mcq-btn";
+        btn.tabIndex = 0;
+        btn.textContent = opt;
+        btn.onclick = ()=> { if (!answerLock) answerArena(i); };
+        btn.onkeyup = (e)=>{ if(e.key==="Enter" && !answerLock){answerArena(i);} };
+        mcqChoices.appendChild(btn);
+      });
+      setTimeout(()=>{ let firstBtn = mcqChoices.querySelector("button"); if (firstBtn) firstBtn.focus(); }, 60);
+      questionProgress.textContent = `Q${gameState.current+1} of ${qset.length}`;
+      updateHealthBars();
+      timerBar.style.width = "100%";
+      timerBar.style.background = "#16a34a";
+      clearInterval(timerInterval);
+      let initialTime = gameState.timeLeft;
+      let timeMs = initialTime * 1000;
+      questionStartTime = Date.now();
+      timerInterval = setInterval(() => {
+        timeMs -= 100;
+        let pct = (timeMs/(initialTime*1000) * 100);
+        timerBar.style.width = pct + "%";
+        if (pct < 40 && pct >= 20) timerBar.style.background = "#ffdd57";
+        else if (pct < 20) timerBar.style.background = "#e63946";
+        else timerBar.style.background = "#16a34a";
+        if (timeMs <= 0) {
+          clearInterval(timerInterval);
+          if (!answerLock) answerArena(-1);
+        }
+      }, 100);
+
+      // --- AI: Dynamic accuracy & speed
+      let baseAcc = 0.75, minDelay = 400, maxDelay = 1100;
+      if (gameState.level === "tutorial" || gameState.level === "foundations") { baseAcc = 0.85; minDelay = 600; maxDelay = 1300; }
+      else if (gameState.level === "elite") { baseAcc = 0.6 + Math.random()*0.18; minDelay = 350; maxDelay = 900; }
+      // Dynamic difficulty: if player is winning by 3+, AI accuracy rises and delay shortens
+      if (gameState.score - gameState.aiScore >= 3) { baseAcc += 0.10; maxDelay -= 200; }
+      // ...if losing by 3+, AI easier
+      if (gameState.aiScore - gameState.score >= 3) { baseAcc -= 0.12; minDelay += 100; }
+      gameState._aiAccuracy = Math.max(0.55, Math.min(0.95, baseAcc));
+      gameState._aiThinkDelay = minDelay + Math.random()*(maxDelay-minDelay);
+    }
+
+    function answerArena(opt) {
+      if (answerLock) return;
+      answerLock = true;
+      clearInterval(timerInterval);
+      const qset = questions[gameState.level];
+      const qIndex = gameState.order[gameState.current];
+      const q = qset[qIndex];
+
+      // Speed metrics
+      let playerAnswerTime = Date.now() - questionStartTime;
+      if (gameState.fastestAnswer === null || playerAnswerTime < gameState.fastestAnswer) gameState.fastestAnswer = playerAnswerTime;
+      if (playerAnswerTime > gameState.slowestAnswer) gameState.slowestAnswer = playerAnswerTime;
+
+      // --- Simulate AI answer
+      let aiPick = null, aiAnswerTime = gameState._aiThinkDelay || 600;
+      let aiRealAnswer = ()=>{
+        // AI accuracy: see showArenaQuestion
+        if (Math.random() < gameState._aiAccuracy) aiPick = q.a;
+        else {
+          let wrongs = [];
+          for (let i=0; i<q.options.length; i++) if (i !== q.a) wrongs.push(i);
+          aiPick = wrongs[Math.floor(Math.random()*wrongs.length)];
+        }
+        let aiCorrect = aiPick === q.a;
+        let playerCorrect = opt === q.a;
+
+        // Combo/Speed Bonus logic
+        let comboBonus = 0, speedBonus = 0, powerUp = null, lightningBonus = 0, feedback = "";
+        // Combo for player
+        if (playerCorrect) {
+          gameState.playerStreak++;
+          gameState.maxPlayerStreak = Math.max(gameState.maxPlayerStreak, gameState.playerStreak);
+          if (gameState.playerStreak >= 3) {
+            comboBonus = 2 * (gameState.playerStreak - 2);
+            feedback += `<span id="combo-bonus">🔥 Combo x${gameState.playerStreak}! +${comboBonus} pts!</span>`;
+            gameState.combos++;
+          }
+          // Power-Ups
+          if (gameState.playerStreak === 4) { gameState.powerUps.push("Double Damage"); gameState.powDouble++; }
+          if (gameState.playerStreak === 5) { gameState.powerUps.push("Freeze AI"); gameState.powFreeze++; }
+        } else {
+          gameState.playerStreak = 0;
+        }
+        // Combo for AI
+        if (aiCorrect) {
+          gameState.aiStreak++;
+          gameState.maxAiStreak = Math.max(gameState.maxAiStreak, gameState.aiStreak);
+        } else {
+          gameState.aiStreak = 0;
+        }
+
+        // Speed bonus (player must be correct and faster than AI)
+        if (playerCorrect && playerAnswerTime < aiAnswerTime) {
+          speedBonus = 1;
+          feedback += ` <span id="speed-bonus">⚡ Speed Bonus!</span>`;
+          gameState.speedBonuses++;
+        }
+
+        // Lightning round bonus
+        if (isLightningRound && playerCorrect) {
+          lightningBonus = 2;
+          feedback += ` <span id="lightning-round-bonus">⚡ Lightning Points!</span>`;
+        }
+
+        // Score updates (and power-ups)
+        let points = (playerCorrect ? 1 : 0) + comboBonus + speedBonus + lightningBonus;
+        if (playerCorrect && gameState.powerUps.includes("Double Damage")) { points *= 2; feedback += ` <span id="combo-bonus">Double Damage!</span>`; }
+        if (playerCorrect) gameState.score += points;
+        if (gameState.powerUps.includes("Double Damage")) gameState.powerUps = gameState.powerUps.filter(p=>p!=="Double Damage");
+        // "Freeze AI": AI skips answer
+        if (gameState.powerUps.includes("Freeze AI")) {
+          aiPick = -1; aiCorrect = false; gameState.powerUps = gameState.powerUps.filter(p=>p!=="Freeze AI");
+          feedback += ` <span id="combo-bonus">Freeze AI!</span>`;
+        }
+        if (aiCorrect) gameState.aiScore++;
+        gameState.aiAnswers.push(aiPick);
+        if (!playerCorrect) gameState.playerHealth -= 5;
+        if (!aiCorrect) gameState.aiHealth -= 5;
+        updateHealthBars();
+        showPowerUps();
+        gameState.answers.push({
+          q: q.q, options: q.options, picked: opt, correct: q.a, aiPick, playerAnswerTime, aiAnswerTime,
+          comboBonus, speedBonus, lightningBonus, powerUp, playerCorrect, aiCorrect
+        });
+
+        // MCQ feedback
+        let btns = mcqChoices.querySelectorAll("button");
+        btns.forEach((btn, i) => {
+          btn.disabled = true;
+          if(i===q.a) btn.classList.add("correct");
+          if(i===opt && i!==q.a) btn.classList.add("incorrect");
+          if(i===opt) btn.classList.add("selected");
+        });
+        mathQ.innerHTML = (isLightningRound ? '<span id="lightning-round-bonus">⚡ Lightning Round: Double Points! ⚡</span><br>' : '') +
+          q.q + "<br>" +
+          `<div>
+            <b>You:</b> ${playerAnswerTime/1000}s<br>
+            <b>AI:</b> ${aiAnswerTime/1000}s
+          </div>
+          <div>
+            You picked: <b>${opt>=0?q.options[opt]:"<i>No Answer</i>"}</b> (${playerCorrect ? "<span class='ai-correct'>Correct</span>" : "<span class='ai-wrong'>Wrong</span>"})<br>
+            <span style="color:#b7e6fa;font-weight:bold;">AI is thinking...</span><br>
+            <span id="ai-answer-feedback"></span>
+            ${feedback}
+          </div>
+          <div class="score">Your Score: ${gameState.score} &nbsp; | &nbsp; AI Score: ${gameState.aiScore}</div>`;
+        mcqChoices.setAttribute("aria-disabled","true");
+
+        setTimeout(()=>{
+          let feedbackDiv = document.getElementById("ai-answer-feedback");
+          if (feedbackDiv) {
+            feedbackDiv.innerHTML =
+              `AI picked: <b>${aiPick>=0?q.options[aiPick]:"<i>No Answer</i>"}</b> (${aiCorrect ? "<span class='ai-correct'>Correct</span>" : "<span class='ai-wrong'>Wrong</span>"})`;
+          }
+        }, gameState._aiThinkDelay || 600);
+
+        setTimeout(()=>{
+          gameState.current++;
+          showArenaQuestion();
+        }, 1200);
+      };
+      setTimeout(aiRealAnswer, gameState._aiThinkDelay);
+    }
+
+    function showArenaSummary() {
+      let qset = questions[gameState.level];
+      let html = `<div style="font-size:1.3em;">Arena Complete!</div>
+        <div class="score">Your Score: ${gameState.score} <br>AI Score: ${gameState.aiScore}</div>
+        <div class="winner-msg">${gameState.score>gameState.aiScore ? "You Win! 🎉" : gameState.score<gameState.aiScore ? "AI Wins! 🤖" : "It's a Draw! 🤝"}</div>
+        <div style="margin:1em auto; max-width:370px; text-align:left; background:#1a1f37; border-radius:7px; padding:1em;">
+          <b>Stats:</b>
+          <ul>
+            <li>Fastest Answer: ${(gameState.fastestAnswer/1000).toFixed(2)}s</li>
+            <li>Longest Streak: ${gameState.maxPlayerStreak}</li>
+            <li>Combos: ${gameState.combos}</li>
+            <li>Speed Bonuses: ${gameState.speedBonuses}</li>
+            <li>Lightning Rounds: ${gameState.lightningRounds}</li>
+            <li>Power-Ups Used: Double Damage (${gameState.powDouble}), Freeze AI (${gameState.powFreeze})</li>
+          </ul>
+        </div>
+        <button class="arena-btn" onclick="restartArena()">Back to Arena</button>
+        <button class="level-btn" onclick="reviewSummary()">Review Answers</button>`;
+      mathQ.innerHTML = html;
+      mcqChoices.innerHTML = "";
+      questionProgress.textContent = "";
+    }
+
+    window.reviewSummary = function() {
+      let html = `<div style="font-size:1.18em;">Review Answers</div>
+        <table class="summary-table">
+        <tr><th>#</th><th>Question</th><th>Your Answer</th><th>Correct</th><th>AI</th><th>Time (s)</th><th>Combo</th><th>Speed</th><th>Lightning</th></tr>`;
+      gameState.answers.forEach((a,i)=>{
+        let user = a.picked>=0?a.options[a.picked]:"";
+        let ai = a.options[a.aiPick];
+        html += `<tr>
+          <td>${i+1}</td>
+          <td>${a.q}</td>
+          <td style="color:${a.picked===a.correct?'#16a34a':'#e63946'}">${user||"<i>No Answer</i>"}</td>
+          <td>${a.options[a.correct]}</td>
+          <td>${ai||"<i>No Answer</i>"}</td>
+          <td>${(a.playerAnswerTime/1000).toFixed(2)}</td>
+          <td>${a.comboBonus?"🔥":""}</td>
+          <td>${a.speedBonus?"⚡":""}</td>
+          <td>${a.lightningBonus?"⚡":""}</td>
+        </tr>`;
+      });
+      html += `</table>
+        <button class="arena-btn" onclick="restartArena()">Back to Arena</button>`;
+      mathQ.innerHTML = html;
+      mcqChoices.innerHTML = "";
+      questionProgress.textContent = "";
+    };
+
+    function restartArena() {
+      levelSelect.style.display = "";
+      arenaSection.style.display = "none";
+      showStatsBtn.style.display = "none";
+      mathQ.innerHTML = "Get Ready...";
+      mcqChoices.innerHTML = "";
+      questionProgress.textContent = "";
+    }
+
+    function updateHealthBars() {
+      p1Health.style.width = `${gameState.playerHealth}%`;
+      p1Health.textContent = `${gameState.playerHealth}`;
+      p2Health.style.width = `${gameState.aiHealth}%`;
+      p2Health.textContent = `${gameState.aiHealth}`;
+    }
+    function showPowerUps() {
+      powerUpsDiv.innerHTML = gameState.powerUps.map(p=>`<span>${p}</span>`).join("");
+    }
+
+    // --- p5.js Avatars (optional, simple faces) ---
+    function drawAvatar(canvasId, mainColor="#7f8ff4") {
+      let canvas = document.getElementById(canvasId);
+      if (!canvas) return;
+      let ctx = canvas.getContext("2d");
+      ctx.clearRect(0,0,60,60);
+      ctx.fillStyle = mainColor;
+      ctx.beginPath();
+      ctx.arc(30,30,26,0,2*Math.PI); ctx.fill();
+      ctx.fillStyle = "#fff";
+      ctx.beginPath(); ctx.arc(22,28,5,0,2*Math.PI); ctx.fill();
+      ctx.beginPath(); ctx.arc(38,28,5,0,2*Math.PI); ctx.fill();
+      ctx.strokeStyle = "#fff";
+      ctx.beginPath(); ctx.arc(30,38,9,0,Math.PI); ctx.stroke();
+    }
+    drawAvatar("p1-avatar", "#7f8ff4");
+    drawAvatar("p2-avatar", "#ff6e6e");
+
+    // Keyboard navigation for MCQ
+    document.addEventListener('keydown', function(e){
+      if (arenaSection.style.display !== "none" && mcqChoices.children.length>0) {
+        let btns = Array.from(mcqChoices.querySelectorAll("button"));
+        let idx = btns.findIndex(b=>b===document.activeElement);
+        if(e.key==="ArrowRight"||e.key==="ArrowDown") {
+          let next = (idx+1)%btns.length; btns[next].focus(); e.preventDefault();
+        } else if(e.key==="ArrowLeft"||e.key==="ArrowUp") {
+          let prev = (idx+btns.length-1)%btns.length; btns[prev].focus(); e.preventDefault();
+        }
+      }
+    });
+  </script>
+</body>
+</html>
